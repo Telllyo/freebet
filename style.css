@@ -1,0 +1,154 @@
+/* Style pour les tableaux en mode jour (par défaut) */
+th {
+    background-color: #cce5ff; /* Fond bleu clair pour l'entête en mode jour */
+    color: black;
+}
+
+input[type="number"], input[type="text"] {
+    background-color: white; /* Fond blanc pour les champs de saisie en mode jour */
+    color: black;
+    border: 1px solid #ccc;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+}
+
+/* Style pour le bouton glissant */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #2196F3;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* Mode nuit */
+body.night-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
+body.night-mode th, body.night-mode td {
+    border-color: white; /* Bordures blanches pour les tableaux en mode nuit */
+}
+
+body.night-mode table {
+    border-color: white; /* Bordure générale blanche pour les tableaux */
+}
+
+body.night-mode th {
+    background-color: #333; /* Fond foncé pour les entêtes en mode nuit */
+    color: white;
+}
+
+body.night-mode input[type="number"], body.night-mode input[type="text"] {
+    background-color: #333; /* Fond foncé pour les champs de saisie en mode nuit */
+    color: #e0e0e0;
+    border: 1px solid #555;
+}
+
+body.night-mode button {
+    background-color: #555;
+    color: #e0e0e0;
+}
+
+table, th, td {
+    border: 1px solid black; /* Bordures noires par défaut */
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+th, td {
+    padding: 8px;
+    text-align: center;
+}
+
+.input-table {
+    margin-bottom: 20px;
+}
+
+#detailsMises {
+    display: none; /* Cache le tableau des mises au chargement */
+}
+
+#resultats {
+    display: none; /* Cache les résultats au chargement */
+}
+
+.btn-reset, .btn-edit, .btn-delete {
+    padding: 10px 20px;
+    margin-top: 10px;
+    margin-bottom: 20px; /* Espace sous les boutons */
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px; /* Coins arrondis */
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+.btn-reset:hover, .btn-edit:hover, .btn-delete:hover {
+    background-color: #45a049; /* Changement de couleur au survol */
+}
+
+.btn-delete {
+    background-color: #f44336; /* Rouge pour supprimer */
+}
+
+.edit-equipes-container {
+    display: none;
+    margin-top: 20px;
+}
+
+.edit-equipes-container input {
+    margin: 5px;
+}
+
+.error-message {
+    color: red;
+    font-size: 14px;
+}
