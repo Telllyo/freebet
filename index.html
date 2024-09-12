@@ -33,14 +33,14 @@
         #resultats {
             display: none; /* Cache les résultats au chargement */
         }
-        input[type="number"] {
+        input[type="number"], input[type="text"] {
             width: 80px;
             text-align: center;
         }
-        .btn-reset {
+        .btn-reset, .btn-edit, .btn-delete {
             padding: 10px 20px;
             margin-top: 10px;
-            margin-bottom: 20px; /* Espace sous le bouton */
+            margin-bottom: 20px; /* Espace sous les boutons */
             background-color: #4CAF50;
             color: white;
             border: none;
@@ -49,8 +49,22 @@
             font-size: 16px;
             transition: background-color 0.3s;
         }
-        .btn-reset:hover {
+        .btn-reset:hover, .btn-edit:hover, .btn-delete:hover {
             background-color: #45a049; /* Changement de couleur au survol */
+        }
+        .btn-delete {
+            background-color: #f44336; /* Rouge pour supprimer */
+        }
+        .edit-equipes-container {
+            display: none;
+            margin-top: 20px;
+        }
+        .edit-equipes-container input {
+            margin: 5px;
+        }
+        .error-message {
+            color: red;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -58,40 +72,48 @@
 
 <h1>Conversion de Freebet</h1>
 
+<!-- Choisir le nombre de matchs -->
+<div>
+    <label for="nbMatchs">Nombre de matchs :</label>
+    <select id="nbMatchs" onchange="ajusterNombreDeMatchs()">
+        <option value="2">2 Matchs</option>
+        <option value="3" selected>3 Matchs</option>
+        <option value="4">4 Matchs</option>
+    </select>
+</div>
+
 <!-- Tableau des entrées de cotes -->
-<table class="input-table">
-    <tr>
-        <th>Match</th>
-        <th>Cote 1</th>
-        <th>Cote N</th>
-        <th>Cote 2</th>
-        <th>TRJ (%)</th>
-    </tr>
-    <tr>
-        <td>Match 1</td>
-        <td><input type="number" id="cote1Match1" placeholder="Cote 1"></td>
-        <td><input type="number" id="coteNMatch1" placeholder="Cote N"></td>
-        <td><input type="number" id="cote2Match1" placeholder="Cote 2"></td>
-        <td><span id="trjMatch1">0</span></td>
-    </tr>
-    <tr>
-        <td>Match 2</td>
-        <td><input type="number" id="cote1Match2" placeholder="Cote 1"></td>
-        <td><input type="number" id="coteNMatch2" placeholder="Cote N"></td>
-        <td><input type="number" id="cote2Match2" placeholder="Cote 2"></td>
-        <td><span id="trjMatch2">0</span></td>
-    </tr>
-    <tr>
-        <td>Match 3</td>
-        <td><input type="number" id="cote1Match3" placeholder="Cote 1"></td>
-        <td><input type="number" id="coteNMatch3" placeholder="Cote N"></td>
-        <td><input type="number" id="cote2Match3" placeholder="Cote 2"></td>
-        <td><span id="trjMatch3">0</span></td>
-    </tr>
+<h2>Saisir les cotes des matchs</h2>
+<table class="input-table" id="tableCotes">
+    <thead>
+        <tr>
+            <th>Match</th>
+            <th>Cote 1</th>
+            <th>Cote N</th>
+            <th>Cote 2</th>
+            <th>TRJ (%)</th>
+        </tr>
+    </thead>
+    <tbody id="bodyCotes">
+        <!-- Lignes de cotes générées dynamiquement ici -->
+    </tbody>
 </table>
 
-<!-- Bouton pour réinitialiser les cotes -->
+<!-- Boutons pour réinitialiser les cotes, éditer et supprimer les équipes -->
 <button class="btn-reset" onclick="resetCotes()">Réinitialiser les cotes</button>
+<button class="btn-edit" onclick="afficherEditionEquipes()">Éditer les équipes</button>
+<button class="btn-delete" id="btnSupprimerEquipes" style="display:none;" onclick="supprimerEquipes()">Supprimer les équipes</button>
+
+<!-- Formulaire pour l'édition des équipes -->
+<div class="edit-equipes-container" id="editEquipesContainer">
+    <h3>Éditer les équipes</h3>
+    <div id="inputEquipes">
+        <!-- Lignes pour les équipes générées dynamiquement ici -->
+    </div>
+    <button class="btn-edit" onclick="validerEquipes()">Valider</button>
+    <button class="btn-reset" onclick="annulerEdition()">Annuler</button>
+    <div class="error-message" id="errorEquipes" style="display: none;">Veuillez remplir toutes les cases pour les équipes.</div>
+</div>
 
 <div>
     <label>Gain désiré :</label>
@@ -113,6 +135,7 @@
     <table>
         <thead>
             <tr>
+                <th>#</th>
                 <th>Combinaison</th>
                 <th>Cote</th>
                 <th>Mise</th>
@@ -125,6 +148,118 @@
 </div>
 
 <script>
+let equipes = {};
+let nombreDeMatchs = 3;
+let equipesEditees = false; // Pour suivre si les équipes ont été éditées
+
+function ajusterNombreDeMatchs() {
+    nombreDeMatchs = parseInt(document.getElementById('nbMatchs').value);
+    genererTableauCotes();
+    genererFormulaireEquipes();
+    resetCotes();
+}
+
+function genererTableauCotes() {
+    const bodyCotes = document.getElementById('bodyCotes');
+    bodyCotes.innerHTML = ''; // Vider le tableau
+
+    for (let i = 1; i <= nombreDeMatchs; i++) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <th id="match${i}Header">Match ${i}</th>
+            <td><input type="number" id="cote1Match${i}" placeholder="Cote 1" oninput="mettreAJourTRJ(); calculerMises();"></td>
+            <td><input type="number" id="coteNMatch${i}" placeholder="Cote N" oninput="mettreAJourTRJ(); calculerMises();"></td>
+            <td><input type="number" id="cote2Match${i}" placeholder="Cote 2" oninput="mettreAJourTRJ(); calculerMises();"></td>
+            <td><span id="trjMatch${i}">0</span></td>
+        `;
+        bodyCotes.appendChild(row);
+    }
+}
+
+function genererFormulaireEquipes() {
+    const inputEquipes = document.getElementById('inputEquipes');
+    inputEquipes.innerHTML = ''; // Vider le formulaire des équipes
+
+    for (let i = 1; i <= nombreDeMatchs; i++) {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <label>Équipe 1 (domicile) :</label>
+            <input type="text" id="equipe1Match${i}" placeholder="Équipe 1">
+            <label>Équipe 2 (extérieur) :</label>
+            <input type="text" id="equipe2Match${i}" placeholder="Équipe 2">
+        `;
+        inputEquipes.appendChild(div);
+    }
+}
+
+function afficherEditionEquipes() {
+    const container = document.getElementById('editEquipesContainer');
+    container.style.display = container.style.display === 'none' || container.style.display === '' ? 'block' : 'none';
+}
+
+function validerEquipes() {
+    let erreurs = false;
+    for (let i = 1; i <= nombreDeMatchs; i++) {
+        const equipe1 = document.getElementById(`equipe1Match${i}`).value;
+        const equipe2 = document.getElementById(`equipe2Match${i}`).value;
+        if (!equipe1 || !equipe2) {
+            erreurs = true;
+        }
+        equipes[i] = { equipe1, equipe2 };
+    }
+
+    if (erreurs) {
+        document.getElementById('errorEquipes').style.display = 'block';
+        return;
+    }
+
+    equipesEditees = true;  // Marquer les équipes comme éditées
+    document.getElementById('errorEquipes').style.display = 'none';
+    document.getElementById('editEquipesContainer').style.display = 'none';
+    document.getElementById('btnSupprimerEquipes').style.display = 'inline-block';
+
+    for (let i = 1; i <= nombreDeMatchs; i++) {
+        document.getElementById(`match${i}Header`).innerText = `${equipes[i].equipe1} vs ${equipes[i].equipe2}`;
+    }
+    calculerMises();
+}
+
+function annulerEdition() {
+    document.getElementById('editEquipesContainer').style.display = 'none';
+}
+
+function resetCotes() {
+    for (let i = 1; i <= nombreDeMatchs; i++) {
+        document.getElementById(`cote1Match${i}`).value = '';
+        document.getElementById(`coteNMatch${i}`).value = '';
+        document.getElementById(`cote2Match${i}`).value = '';
+        document.getElementById(`trjMatch${i}`).innerText = '0';
+    }
+    supprimerEquipes();
+    document.getElementById('detailsMises').style.display = 'none';  // Cacher le tableau des mises
+    document.getElementById('resultats').style.display = 'none';  // Cacher les résultats
+}
+
+function supprimerEquipes() {
+    equipes = {};
+    equipesEditees = false;  // Marquer les équipes comme non éditées
+    for (let i = 1; i <= nombreDeMatchs; i++) {
+        document.getElementById(`match${i}Header`).innerText = `Match ${i}`;
+    }
+    document.getElementById('btnSupprimerEquipes').style.display = 'none';
+    calculerMises();
+}
+
+function mettreAJourTRJ() {
+    for (let i = 1; i <= nombreDeMatchs; i++) {
+        const cote1 = parseFloat(document.getElementById(`cote1Match${i}`).value) || 0;
+        const coteN = parseFloat(document.getElementById(`coteNMatch${i}`).value) || 0;
+        const cote2 = parseFloat(document.getElementById(`cote2Match${i}`).value) || 0;
+        const trj = calculerTRJ(cote1, coteN, cote2);
+        document.getElementById(`trjMatch${i}`).innerText = (trj * 100).toFixed(2);
+    }
+}
+
 function calculerTRJ(cote1, coteN, cote2) {
     if (cote1 > 0 && coteN > 0 && cote2 > 0) {
         return 1 / ((1 / cote1) + (1 / coteN) + (1 / cote2));
@@ -132,34 +267,84 @@ function calculerTRJ(cote1, coteN, cote2) {
     return 0;
 }
 
-function mettreAJourTRJ() {
-    let cote1M1 = parseFloat(document.getElementById('cote1Match1').value) || 0;
-    let coteN1M1 = parseFloat(document.getElementById('coteNMatch1').value) || 0;
-    let cote2M1 = parseFloat(document.getElementById('cote2Match1').value) || 0;
-    let trj1 = calculerTRJ(cote1M1, coteN1M1, cote2M1);
-    document.getElementById('trjMatch1').innerText = (trj1 * 100).toFixed(2);
+function calculerMises() {
+    const gainDesire = parseFloat(document.getElementById('gainDesire').value);
+    if (!toutesLesCotesRemplies()) return;
 
-    let cote1M2 = parseFloat(document.getElementById('cote1Match2').value) || 0;
-    let coteN1M2 = parseFloat(document.getElementById('coteNMatch2').value) || 0;
-    let cote2M2 = parseFloat(document.getElementById('cote2Match2').value) || 0;
-    let trj2 = calculerTRJ(cote1M2, coteN1M2, cote2M2);
-    document.getElementById('trjMatch2').innerText = (trj2 * 100).toFixed(2);
+    const combinaisons = genererCombinaisons(nombreDeMatchs);
+    let totalMise = 0;
+    const tbody = document.getElementById('detailMises');
+    tbody.innerHTML = '';
 
-    let cote1M3 = parseFloat(document.getElementById('cote1Match3').value) || 0;
-    let coteN1M3 = parseFloat(document.getElementById('coteNMatch3').value) || 0;
-    let cote2M3 = parseFloat(document.getElementById('cote2Match3').value) || 0;
-    let trj3 = calculerTRJ(cote1M3, coteN1M3, cote2M3);
-    document.getElementById('trjMatch3').innerText = (trj3 * 100).toFixed(2);
+    combinaisons.forEach((combinaison, index) => {
+        let cote = 1;
+        let description = equipesEditees ? getDescriptionCombinaison(combinaison) : '';  // N'ajouter la description que si les équipes sont éditées
+        for (let i = 0; i < combinaison.length; i++) {
+            const result = combinaison[i];
+            cote *= parseFloat(document.getElementById(`cote${result}Match${i + 1}`).value);
+        }
+        const mise = (gainDesire / (cote - 1)).toFixed(2);
+        totalMise += parseFloat(mise);
+
+        const row = `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${combinaison}${description ? ' - ' + description : ''}</td>
+                <td>${cote.toFixed(2)}</td>
+                <td>${mise} €</td>
+                <td>${((cote - 1) * mise).toFixed(2)} €</td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+
+    document.getElementById('totalMise').innerText = totalMise.toFixed(2);
+    document.getElementById('tauxConversion').innerText = ((gainDesire / totalMise) * 100).toFixed(2);
+    afficherOuMasquerTableau();
+}
+
+function getDescriptionCombinaison(combinaison) {
+    let description = '';
+    for (let i = 0; i < combinaison.length; i++) {
+        if (combinaison[i] === '1') {
+            description += equipes[i + 1]?.equipe1 || 'Equipe1';
+        } else if (combinaison[i] === 'N') {
+            description += 'Nul';
+        } else if (combinaison[i] === '2') {
+            description += equipes[i + 1]?.equipe2 || 'Equipe2';
+        }
+        if (i < combinaison.length - 1) {
+            description += ' / ';
+        }
+    }
+    return description;
 }
 
 function toutesLesCotesRemplies() {
-    const cotes = document.querySelectorAll('input[type="number"]');
-    for (let i = 0; i < cotes.length - 1; i++) {  // -1 pour ignorer le champ "gain désiré"
-        if (!cotes[i].value || parseFloat(cotes[i].value) <= 0) {
-            return false;  // Si une cote est vide ou <= 0, retourne false
+    for (let i = 1; i <= nombreDeMatchs; i++) {
+        if (!document.getElementById(`cote1Match${i}`).value || !document.getElementById(`coteNMatch${i}`).value || !document.getElementById(`cote2Match${i}`).value) {
+            return false;
         }
     }
     return true;
+}
+
+function genererCombinaisons(nbMatchs) {
+    const resultats = ['1', 'N', '2'];
+    const combinaisons = [];
+
+    const genererCombinaison = (combinaison, niveau) => {
+        if (niveau === nbMatchs) {
+            combinaisons.push(combinaison);
+            return;
+        }
+        for (let i = 0; i < resultats.length; i++) {
+            genererCombinaison(combinaison + resultats[i], niveau + 1);
+        }
+    };
+
+    genererCombinaison('', 0);
+    return combinaisons;
 }
 
 function afficherOuMasquerTableau() {
@@ -174,128 +359,8 @@ function afficherOuMasquerTableau() {
     }
 }
 
-function resetCotes() {
-    document.getElementById('cote1Match1').value = '';
-    document.getElementById('coteNMatch1').value = '';
-    document.getElementById('cote2Match1').value = '';
-    
-    document.getElementById('cote1Match2').value = '';
-    document.getElementById('coteNMatch2').value = '';
-    document.getElementById('cote2Match2').value = '';
-    
-    document.getElementById('cote1Match3').value = '';
-    document.getElementById('coteNMatch3').value = '';
-    document.getElementById('cote2Match3').value = '';
-
-    document.getElementById('trjMatch1').innerText = '0';
-    document.getElementById('trjMatch2').innerText = '0';
-    document.getElementById('trjMatch3').innerText = '0';
-
-    // Masquer le tableau des détails des mises et réinitialiser les résultats
-    document.getElementById('detailsMises').style.display = 'none';
-    document.getElementById('resultats').style.display = 'none';
-
-    document.getElementById('totalMise').innerText = '0';
-    document.getElementById('tauxConversion').innerText = '0';
-
-    calculerMises(); // Mise à jour après réinitialisation
-}
-
-function calculerMises() {
-    let cote1M1 = parseFloat(document.getElementById('cote1Match1').value);
-    let coteN1M1 = parseFloat(document.getElementById('coteNMatch1').value);
-    let cote2M1 = parseFloat(document.getElementById('cote2Match1').value);
-    
-    let cote1M2 = parseFloat(document.getElementById('cote1Match2').value);
-    let coteN1M2 = parseFloat(document.getElementById('coteNMatch2').value);
-    let cote2M2 = parseFloat(document.getElementById('cote2Match2').value);
-    
-    let cote1M3 = parseFloat(document.getElementById('cote1Match3').value);
-    let coteN1M3 = parseFloat(document.getElementById('coteNMatch3').value);
-    let cote2M3 = parseFloat(document.getElementById('cote2Match3').value);
-    
-    let gainDesire = parseFloat(document.getElementById('gainDesire').value);
-
-    if (!toutesLesCotesRemplies()) {
-        return;
-    }
-
-    let ordreCombinaisons = [
-        '111', '11N', '112', '1N1', '1NN', '1N2', '121', '12N', '122',
-        'N11', 'N1N', 'N12', 'NN1', 'NNN', 'NN2', 'N21', 'N2N', 'N22',
-        '211', '21N', '212', '2N1', '2NN', '2N2', '221', '22N', '222'
-    ];
-
-    let cotes = {
-        '111': cote1M1 * cote1M2 * cote1M3,
-        '11N': cote1M1 * cote1M2 * coteN1M3,
-        '112': cote1M1 * cote1M2 * cote2M3,
-        '1N1': cote1M1 * coteN1M2 * cote1M3,
-        '1NN': cote1M1 * coteN1M2 * coteN1M3,
-        '1N2': cote1M1 * coteN1M2 * cote2M3,
-        '121': cote1M1 * cote2M2 * cote1M3,
-        '12N': cote1M1 * cote2M2 * coteN1M3,
-        '122': cote1M1 * cote2M2 * cote2M3,
-        'N11': coteN1M1 * cote1M2 * cote1M3,
-        'N1N': coteN1M1 * cote1M2 * coteN1M3,
-        'N12': coteN1M1 * cote1M2 * cote2M3,
-        'NN1': coteN1M1 * coteN1M2 * cote1M3,
-        'NNN': coteN1M1 * coteN1M2 * coteN1M3,
-        'NN2': coteN1M1 * coteN1M2 * cote2M3,
-        'N21': coteN1M1 * cote2M2 * cote1M3,
-        'N2N': coteN1M1 * cote2M2 * coteN1M3,
-        'N22': coteN1M1 * cote2M2 * cote2M3,
-        '211': cote2M1 * cote1M2 * cote1M3,
-        '21N': cote2M1 * cote1M2 * coteN1M3,
-        '212': cote2M1 * cote1M2 * cote2M3,
-        '2N1': cote2M1 * coteN1M2 * cote1M3,
-        '2NN': cote2M1 * coteN1M2 * coteN1M3,
-        '2N2': cote2M1 * coteN1M2 * cote2M3,
-        '221': cote2M1 * cote2M2 * cote1M3,
-        '22N': cote2M1 * cote2M2 * coteN1M3,
-        '222': cote2M1 * cote2M2 * cote2M3
-    };
-
-    let totalMise = 0;
-    let tbody = document.getElementById('detailMises');
-    tbody.innerHTML = '';
-
-    ordreCombinaisons.forEach(combinaison => {
-        let cote = cotes[combinaison];
-        if (cote > 0) {
-            // Calcul du gain net avec freebet : (Cote - 1) * Mise
-            let mise = (gainDesire / (cote - 1)).toFixed(2);
-            totalMise += parseFloat(mise);
-            let gainNet = (cote - 1) * mise;
-            
-            let row = `
-                <tr>
-                    <td>${combinaison}</td>
-                    <td>${cote.toFixed(2)}</td>
-                    <td>${mise} €</td>
-                    <td>${gainNet.toFixed(2)} €</td>
-                </tr>
-            `;
-            tbody.innerHTML += row;
-        }
-    });
-
-    document.getElementById('totalMise').innerText = totalMise.toFixed(2);
-
-    // Calcul du taux de conversion : (Gain désiré / Total des mises) * 100
-    let tauxConversion = (gainDesire / totalMise) * 100;
-    document.getElementById('tauxConversion').innerText = tauxConversion.toFixed(2);
-
-    afficherOuMasquerTableau();
-}
-
-// Mettre à jour le TRJ en temps réel à chaque saisie
-document.querySelectorAll('input[type="number"]').forEach(input => {
-    input.addEventListener('input', () => {
-        mettreAJourTRJ();
-        calculerMises();
-    });
-});
+// Appel initial pour générer le tableau
+ajusterNombreDeMatchs();
 
 </script>
 
